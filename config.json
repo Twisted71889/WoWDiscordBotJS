@@ -1,0 +1,19 @@
+{
+    "botToken": "",
+    "commandPrefix": "!",
+    "version": "0.0.2a",
+    "bnetId": "",
+    "bnetSecret": "",
+    "ssl_port": 443,
+    "http_port": 80,
+    "bind_address": "",
+    "url_root": "",
+    "mysql": {
+        "host": "localhost",
+        "user": "",
+        "pass": "",
+        "db": ""
+    },
+    "bnet_callback_url": "/auth/bnet/callback/",
+    "register_channel": false
+}
