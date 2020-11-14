@@ -32,42 +32,76 @@ class wowApi {
             let member = result.members[index];
             self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '?namespace=profile-us&locale=en_US').then((toonData) => {
                 self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '/character-media?namespace=profile-us&locale=en_US').then((mediaAssets) => {
-                    toonData.guild_rank = member.rank
-                    var toonProfile = {
-                        id: toonData.id,
-                        name: toonData.name,
-                        gender: toonData.gender.name,
-                        race: toonData.race.name,
-                        character_class: toonData.character_class.name,
-                        active_spec: toonData.active_spec.name,
-                        level: toonData.level,
-                        experience: toonData.experience,
-                        achievement_points: toonData.achievement_points,
-                        last_login_timestamp: toonData.last_login_timestamp,
-                        average_item_level: toonData.average_item_level,
-                        equipped_item_level: toonData.equipped_item_level,
-                        guild_rank: member.rank,
-                        media_avatar: mediaAssets.assets[0].value,
-                        media_inset: mediaAssets.assets[1].value,
-                        media_main: mediaAssets.assets[2].value,
-                        media_raw: mediaAssets.assets[3].value
-                    }
-                    guildMembers.push(toonProfile);
-                    var valuesArray = [];
-                    for (var index in toonProfile) {
-                        valuesArray.push(toonProfile[index]);
-                    }
-                    for (var index in toonProfile) {
-                        if (index != 'id') {
+                    self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '/equipment?namespace=profile-us&locale=en_US').then(async (equipment) => {
+                        if(toonData.level >= 50 && toonData.equipped_item_level >= 110) {
+                            try {
+                                var raidio = await self.FW.modules.raiderio.GetMPlusProfile('zuljin', member.character.name.toLowerCase());
+                                if(raidio) {
+                                    if(raidio.mplusscore > 0) {
+                                        var raideriosql = [toonData.id, raidio.mplusscore, raidio.mplus_realm_rank, JSON.stringify(raidio.best_runs), raidio.mplusscore, raidio.mplus_realm_rank, JSON.stringify(raidio.best_runs)];
+                                        FW.sqlPool.query("INSERT INTO `raiderio` (`character_id`, `mplusscore`, `mplus_realm_rank`, `best_runs`) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE `mplusscore` = ?, `mplus_realm_rank` = ?, `best_runs` = ?", raideriosql, (e,r,f) => {
+                                            if(e) {
+                                                console.log(e);
+                                            }
+                                        });
+                                    }
+                                    
+                                }
+                            } catch (e) {
+                                console.log(e);
+                            }                            
+                        }
+                        toonData.guild_rank = member.rank
+                        var toonProfile = {
+                            id: toonData.id,
+                            name: toonData.name,
+                            gender: toonData.gender.name,
+                            race: toonData.race.name,
+                            character_class: toonData.character_class.name,
+                            active_spec: toonData.active_spec.name,
+                            level: toonData.level,
+                            experience: toonData.experience,
+                            achievement_points: toonData.achievement_points,
+                            last_login_timestamp: toonData.last_login_timestamp,
+                            average_item_level: toonData.average_item_level,
+                            equipped_item_level: toonData.equipped_item_level,
+                            guild_rank: member.rank,
+                            media_avatar: mediaAssets.assets[0].value,
+                            media_inset: mediaAssets.assets[1].value,
+                            media_main: mediaAssets.assets[2].value,
+                            media_raw: mediaAssets.assets[3].value
+                        }
+                        var equipped = equipment.equipped_items;
+                        var totalItemLevel = 0;
+                        var totalItems = 15;
+                        var ignoreSlots = ['TABARD', 'SHIRT'];
+                        for(var e in equipped) {
+                            var item = equipped[e];
+                            if(item.slot.type != 'TABARD' && item.slot.type != 'SHIRT') {
+                                if(item.slot.type == 'OFF_HAND') {
+                                    totalItems++;
+                                }
+                                totalItemLevel += item.level.value
+                            }
+                        }
+                        toonProfile.equipped_item_level = parseFloat(totalItemLevel / totalItems).toFixed(3);
+                        guildMembers.push(toonProfile);
+                        var valuesArray = [];
+                        for (var index in toonProfile) {
                             valuesArray.push(toonProfile[index]);
                         }
-                    }
-                    FW.sqlPool.query("INSERT INTO `bot_guild_member` (`id`, `name`, `gender`, `race`, `character_class`, `active_spec`, `level`, `experience`, `achievement_points`, `last_login_timestamp`, `average_item_level`, `equipped_item_level`, `guild_rank`, `media_avatar`, `media_inset`, `media_main`, `media_raw`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE `name` = ?,`gender` = ?,`race` = ?,`character_class` = ?,`active_spec` = ?,`level` = ?,`experience` = ?,`achievement_points` = ?, `last_login_timestamp` = ?,`average_item_level` = ?,`equipped_item_level` = ?,`guild_rank` = ?,`media_avatar` = ?,`media_inset` = ?,`media_main` = ?,`media_raw` = ?", valuesArray, (error, results, fields) => {
-                        if (error) {
-                            console.log(error);
+                        for (var index in toonProfile) {
+                            if (index != 'id') {
+                                valuesArray.push(toonProfile[index]);
+                            }
                         }
-                    })
-                    toonsProcessed++;
+                        FW.sqlPool.query("INSERT INTO `bot_guild_member` (`id`, `name`, `gender`, `race`, `character_class`, `active_spec`, `level`, `experience`, `achievement_points`, `last_login_timestamp`, `average_item_level`, `equipped_item_level`, `guild_rank`, `media_avatar`, `media_inset`, `media_main`, `media_raw`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE `name` = ?,`gender` = ?,`race` = ?,`character_class` = ?,`active_spec` = ?,`level` = ?,`experience` = ?,`achievement_points` = ?, `last_login_timestamp` = ?,`average_item_level` = ?,`equipped_item_level` = ?,`guild_rank` = ?,`media_avatar` = ?,`media_inset` = ?,`media_main` = ?,`media_raw` = ?", valuesArray, (error, results, fields) => {
+                            if (error) {
+                                console.log(error);
+                            }
+                        })
+                        toonsProcessed++;
+                    }).catch((e) => { toonsProcessed++; });
                 }).catch((e) => { toonsProcessed++; });
             }).catch((e) => { toonsProcessed++; })
         }
@@ -190,7 +224,7 @@ class wowApi {
             .setDescription(toonData[mainToonIndex].gender + ' ' + toonData[mainToonIndex].race + ' ' + toonData[mainToonIndex].active_spec + ' ' + toonData[mainToonIndex].character_class)
             .setImage(toonData[mainToonIndex].media_main)
             .setTimestamp()
-            .addFields({ name: 'Item Level', value: toonData[mainToonIndex].average_item_level })
+            .addFields({ name: 'Item Level', value: toonData[mainToonIndex].equipped_item_level })
             .setFooter('LSS WoW Bot');
     }
     accountCharacters(ret, player) {

@@ -58,15 +58,15 @@ class listtoons {
             }
             for (var toonIndex in toonData) {
                 toonData[toonIndex].rawname = toonData[toonIndex].name
-                toonData[toonIndex].name = toonData[toonIndex].name + ' (' + toonData[toonIndex].average_item_level + ')'
+                toonData[toonIndex].name = toonData[toonIndex].name + ' (' + toonData[toonIndex].equipped_item_level + ')'
                 if (toonData[toonIndex].guild_rank < bestToonRank) {
                     mainToon = toonData[toonIndex]
-                    bestiLvL = toonData[toonIndex].average_item_level
+                    bestiLvL = toonData[toonIndex].equipped_item_level
                     mainToonIndex = toonIndex
                     bestToonRank = toonData[toonIndex].guild_rank
                 } else if (toonData[toonIndex].guild_rank == bestToonRank) {
-                    if (toonData[toonIndex].average_item_level > bestiLvL) {
-                        bestiLvL = toonData[toonIndex].average_item_level
+                    if (toonData[toonIndex].equipped_item_level > bestiLvL) {
+                        bestiLvL = toonData[toonIndex].equipped_item_level
                         mainToon = toonData[toonIndex]
                         mainToonIndex = toonIndex
                     }
