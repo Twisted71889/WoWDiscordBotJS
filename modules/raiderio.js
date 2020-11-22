@@ -2,6 +2,8 @@ class raiderio {
     constructor(FW) {
         this.FW = FW;
         this.FW.events.on('msg', this.messageHandler);
+        this.highestKey = 0;
+        this.highestTimedKey = 0;
     }
     messageHandler(FW, obj, user, msg) {
         if (msg.substring(0, 11) == FW.config.commandPrefix + "topiorealm") {
@@ -100,6 +102,7 @@ class raiderio {
                     mplus_realm_rank: raiderio.mythic_plus_ranks.faction_class.realm 
                 }
                 raiderObj.best_runs = []
+                var caps = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                 for(var d in raiderio.mythic_plus_best_runs) {
                     var run = raiderio.mythic_plus_best_runs[d];
                     var runObj = {
@@ -107,6 +110,17 @@ class raiderio {
                         level: run.mythic_level,
                         time: parseFloat((run.clear_time_ms / 1000) / 60, 2),
                         chests: run.num_keystone_upgrades
+                    }
+                    if( run.num_keystone_upgrades > 0) {
+                        if(this.highestTimedKey < run.mythic_level) {
+                            this.highestTimedKey = run.mythic_level;
+                            this.highestTimedKeyName = run.short_name;
+                        }
+                    } else {
+                        if(this.highestKey < run.mythic_level) {
+                            this.highestKey = run.mythic_level;
+                            this.highestKeyName = run.short_name;
+                        }
                     }
                     runObj.affixes = []
                     for(var a in run.affixes) {

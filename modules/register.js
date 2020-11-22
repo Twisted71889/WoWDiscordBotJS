@@ -22,13 +22,7 @@ class register {
             res.sendFile('/home/lss/discordbot/static/bnet_login_success.html')
         })
         self.FW.webapp.core.get('/auth/bnet/redirect', self.FW.webapp.passport.authenticate('bnet'))
-        self.FW.webapp.core.get('/api/v1/guild_stats', (req, res) => {
-            var responseObject = {
-                num_members: self.FW.discord.WoWGuildMembers.length
-            }
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.status(200).send(JSON.stringify(responseObject));
-        });
+        
         self.FW.webapp.core.get('/auth/bnet/callback',
             self.FW.webapp.passport.authenticate('bnet', { failureRedirect: '/auth/bnet/failed' }),
             function(req, res) {

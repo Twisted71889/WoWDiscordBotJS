@@ -4,6 +4,7 @@ class wowApi {
         this.FW = FW;
         this.guildMembers = [];
         this.toonDB = [];
+        this.actualMembers = []
         this.FW.classes.BlizzAPI = require('blizzapi');
         this.FW.bapi = new this.FW.classes.BlizzAPI({
             region: 'us',
@@ -13,14 +14,28 @@ class wowApi {
         this.FW.events.on('msg', this.messageHandler);
         this.FW.events.on('wowApi_guildUpdate', this.onGuildUpdate)
         this.FW.events.on('wowApi_guildToonsProcessed', this.onGuildToonsProcessed)
+        this.updateRequested = false
         self.fetchGuildUpdate(self)
         setInterval(() => { self.fetchGuildUpdate(self) }, 600000)
     }
-    messageHandler(FW, obj, user, msg) {
-
+    async messageHandler(FW, obj, user, msg) {
+        if (msg.substring(0, 13) == FW.config.commandPrefix + "updateroster") {
+            if(obj.member.hasPermission("ADMINISTRATOR")) {
+                obj.reply(`I'm fetching fresh data from the WoW API.  Please stand by.`);
+                FW.modules.wowApi.updateRequested = obj.channel.id;
+                await FW.modules.wowApi.onGuildUpdate(FW.modules.wowApi, await FW.modules.wowApi.GetGuildInfo());
+                obj.reply(`Guild Database has been updated.`);
+            } else {
+                obj.reply(`you do not have permission to run that command.`);
+            }
+        }
     }
     onGuildToonsProcessed(self, toons) {
         self.guildMembers = toons
+        if(self.updateRequested != false) {
+            self.FW.discord.myguild.channels.cache.get(self.updateRequested).send(`Guild Database Contains ${toons.length} characters.`);
+            self.updateRequested = false
+        }
         self.FW.log(`Guild Roster Updated.  ${toons.length} characters queried.`, 3, 'WOWAPI')
     }
     async onGuildUpdate(self, result) {
@@ -30,9 +45,14 @@ class wowApi {
         var toonsProcessed = 0;
         for (var index in result.members) {
             let member = result.members[index];
-            self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '?namespace=profile-us&locale=en_US').then((toonData) => {
-                self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '/character-media?namespace=profile-us&locale=en_US').then((mediaAssets) => {
+            FW.log(member.character.name.toLowerCase(), 3, 'TOONSCAN')
+            await new Promise(resolve => setTimeout(resolve, 20))
+            self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '?namespace=profile-us&locale=en_US').then(async (toonData) => {
+                await new Promise(resolve => setTimeout(resolve, 20))
+                self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '/character-media?namespace=profile-us&locale=en_US').then(async (mediaAssets) => {
+                    await new Promise(resolve => setTimeout(resolve, 20))
                     self.FW.bapi.query('/profile/wow/character/zuljin/' + member.character.name.toLowerCase() + '/equipment?namespace=profile-us&locale=en_US').then(async (equipment) => {
+                        await new Promise(resolve => setTimeout(resolve, 20))
                         if(toonData.level >= 50 && toonData.equipped_item_level >= 110) {
                             try {
                                 var raidio = await self.FW.modules.raiderio.GetMPlusProfile('zuljin', member.character.name.toLowerCase());
@@ -126,11 +146,12 @@ class wowApi {
         var discordUsers = {}
         var getBestToonInfo = (async(w, v) => {
             return await new Promise((res, rej) => {
-                self.FW.sqlPool.query("SELECT * FROM `bot_guild_member` WHERE " + w + " ORDER BY `guild_rank` ASC LIMIT 0,1", v, (er, rr, ff) => {
+                self.FW.sqlPool.query("SELECT * FROM `bot_guild_member` WHERE " + w + " ORDER BY `guild_rank` ASC, `equipped_item_level` DESC LIMIT 0,1", v, (er, rr, ff) => {
                     if (!er && rr[0] != undefined) {
                         res(rr[0]);
                     } else if (er) {
-                        //console.log(er)
+                        res(false);
+                        console.log(er)
                     }
                 })
             })
@@ -149,7 +170,7 @@ class wowApi {
                     for (var c in discordUsers[u]) {
                         where = where + ' OR `id` = ?'
                     }
-                    where = where.substring(4)
+                    where = where.substring(4);
                     var toonInfo = await getBestToonInfo(where, discordUsers[u]);
                     var guildRank = toonInfo.guild_rank
                     var ranks = {
@@ -170,15 +191,17 @@ class wowApi {
                     if (member) {
                         for (let rrr = guildRank; rrr <= 9; rrr++) {
                             if (!member.displayName.includes(toonInfo.name)) {
-                                member.setNickname(member.displayName + '(' + toonInfo.name + ')')
+                                await member.setNickname(member.displayName + '(' + toonInfo.name + ')').catch((e) => {
+                                    self.FW.log(`Unable to change name ${toonInfo.name}/${member.displayName}`, 2);
+                                })
                             }
                             let role = await self.FW.discord.myguild.roles.cache.find(r => r.name === ranks[rrr]);
                             if (!await member.roles.cache.find(r => r.name === ranks[rrr])) {
-                                member.roles.add(role)
+                                await member.roles.add(role)
                                 if (ranks[rrr] == ranks[guildRank]) {
                                     if (announced == false) {
                                         announced = true;
-                                        self.FW.discord.myguild.channels.cache.get(self.FW.discord.myguild.systemChannelID).send('<@!' + u + '> has been promoted to <@&' + role.id + '>');
+                                        await self.FW.discord.myguild.channels.cache.get(self.FW.discord.myguild.systemChannelID).send('<@!' + u + '> has been promoted to <@&' + role.id + '>');
                                     }
                                 }
                             }

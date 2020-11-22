@@ -5,7 +5,7 @@ class version {
     }
     messageHandler(FW, obj, user, msg) {
         if (msg.substring(0, 8) == FW.config.commandPrefix + "version") {
-            obj.reply("Current Version: 1.1.1a");
+            obj.reply("Current Version: 1.1.2a");
         }
     }
 }
